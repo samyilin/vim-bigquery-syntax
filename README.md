@@ -15,7 +15,8 @@ autocmd BufRead,BufNewFile *.sql set filetype=sqlbigquery
 `syntax/dbt.vim` keeps owning Jinja regions and loads this as its base:
 
 ```vim
-execute 'runtime! syntax/' . get(g:, 'dbtpal_sql_base', 'sqlbigquery') . '.vim'
+" in your config (dbt.vim reads this, falls back to stock sql.vim):
+let g:dbtpal_sql_base = 'sqlbigquery'
 ```
 
 With `vim.pack`:
