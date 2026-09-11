@@ -32,6 +32,12 @@ Groups used: `sqlStatement sqlKeyword sqlOperator sqlType sqlFunction
 sqlString sqlNumber sqlComment` — same names as stock `sql.vim` so
 overlays and tests keep working.
 
+## Test
+
+```sh
+nvim --headless --noplugin -u NONE --cmd "set rtp+=." -l tests/smoke.lua
+```
+
 ## Keyword source
 
 Google does not publish a version number for GoogleSQL — the language is
