@@ -32,7 +32,25 @@ Groups used: `sqlStatement sqlKeyword sqlOperator sqlType sqlFunction
 sqlString sqlNumber sqlComment` — same names as stock `sql.vim` so
 overlays and tests keep working.
 
-## Refresh
+## Keyword source
 
-Compare against https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
-and `functions-all` when BigQuery adds keywords/functions.
+Google does not publish a version number for GoogleSQL — the language is
+defined by the reference docs, which change continuously. These lists were
+curated from the docs on **2026-09-11**:
+
+- https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+- https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
+- https://cloud.google.com/bigquery/docs/reference/standard-sql/functions-all
+
+Re-check those pages when BigQuery announces new keywords/functions and
+update `syntax/sqlbigquery.vim` by hand. Automated scraping is
+deliberately avoided: doc pages mix prose, examples, and dotted names
+(e.g. `KEYS.NEW_KEYSET`) that need human judgment to turn into Vim
+keywords.
+
+## AI disclaimer
+
+These keyword lists were assembled with AI assistance from the pages
+above. They are believed accurate as of the date pulled, but the official
+BigQuery docs are authoritative — if highlighting disagrees with the
+docs, the docs win. Contributions correcting the lists are welcome.
