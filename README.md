@@ -34,8 +34,16 @@ overlays and tests keep working.
 
 ## Test
 
+Neovim (Lua):
+
 ```sh
 nvim --headless --noplugin -u NONE --cmd "set rtp+=." -l tests/smoke.lua
+```
+
+Vim (Vimscript):
+
+```sh
+vim -u NONE -N --not-a-term -c "set rtp+=." -S tests/smoke.vim -c "qa!"
 ```
 
 ## Keyword source
