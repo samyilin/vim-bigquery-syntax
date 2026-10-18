@@ -61,11 +61,23 @@ syn keyword sqlType	interval json geography array struct range uuid
 syn keyword sqlType	microsecond millisecond second minute hour dayofweek day
 syn keyword sqlType	dayofyear week isoweek month quarter year isoyear
 
-" Strings: '...' "..." """...""" `project.dataset.table` BQ raw/byte literals
-syn region sqlString	matchgroup=Quote start=+b\?"+ skip=+\\"+ end=+"+
-syn region sqlString	matchgroup=Quote start=+b\?"""+ end=+"""+
-syn region sqlString	matchgroup=Quote start=+[bB]\?'+ skip=+\\'+ end=+'+
-syn region sqlString	matchgroup=Quote start=+`+ end=+`+
+" Strings: '...' "..." '''...''' """...""" `project.dataset.table`
+" Quoted strings can't contain newlines, so the single and double quote
+" regions are oneline; only triple-quoted variants span lines. A backslash
+" escapes the following character when locating the closing delimiter in
+" every variant, raw included: a raw string keeps the backslash in its value
+" but still can't end on an odd number of backslashes. Triple-quoted variants
+" are defined after their single-quoted counterparts because, at a shared
+" start position, the item defined last wins.
+syn region sqlString	matchgroup=Quote start=+[bB]\?"+	skip=+\\.+	end=+"+	oneline
+syn region sqlString	matchgroup=Quote start=+\%([rR][bB]\?\|[bB][rR]\)"+	skip=+\\.+	end=+"+	oneline
+syn region sqlString	matchgroup=Quote start=+[bB]\?"""+	skip=+\\.+	end=+"""+
+syn region sqlString	matchgroup=Quote start=+\%([rR][bB]\?\|[bB][rR]\)"""+	skip=+\\.+	end=+"""+
+syn region sqlString	matchgroup=Quote start=+[bB]\?'+	skip=+\\.+	end=+'+	oneline
+syn region sqlString	matchgroup=Quote start=+\%([rR][bB]\?\|[bB][rR]\)'+	skip=+\\.+	end=+'+	oneline
+syn region sqlString	matchgroup=Quote start=+[bB]\?'''+	skip=+\\.+	end=+'''+
+syn region sqlString	matchgroup=Quote start=+\%([rR][bB]\?\|[bB][rR]\)'''+	skip=+\\.+	end=+'''+
+syn region sqlString	matchgroup=Quote start=+`+	end=+`+	oneline
 
 " Numbers
 syn match sqlNumber	"-\=\<\d*\.\=[0-9_]\>"

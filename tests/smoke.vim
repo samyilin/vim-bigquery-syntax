@@ -1,5 +1,5 @@
 " Smoke test (Vimscript): syntax file loads cleanly and highlights BQ constructs.
-" Run: vim -u NONE -N --not-a-term -c "set rtp+=." -S tests/smoke.vim -c "qa!"
+" Run: vim -u NONE -N --not-a-term --cmd "set nomore" -c "set rtp+=." -S tests/smoke.vim -c "qa!"
 runtime syntax/sqlbigquery.vim
 
 let s:failures = 0
@@ -45,6 +45,89 @@ call s:HasAt(1, 'qualify', 'sqlKeyword')
 call s:HasAt(1, 'row_number', 'sqlFunction')
 call s:HasAt(1, 'proj.ds.t', 'sqlString')
 call s:HasAt(2, 'comment', 'sqlComment')
+
+" String literals (BigQuery lexical reference). See tests/smoke.lua for notes.
+function! s:Reload(lines) abort
+  enew!
+  call setline(1, a:lines)
+  runtime syntax/sqlbigquery.vim
+  " Materialize top-down; synID() alone doesn't reliably sync with
+  " `syn sync ccomment`, while highlighting is computed top-down.
+  for l:i in range(1, line('$'))
+    for l:c in range(1, max([1, len(getline(l:i))]))
+      call synID(l:i, l:c, 1)
+    endfor
+  endfor
+endfunction
+
+function! s:StringLike(lnum, col) abort
+  let l:g = synIDattr(synID(a:lnum, a:col, 1), 'name')
+  return l:g ==# 'Quote' || l:g ==# 'sqlString'
+endfunction
+
+function! s:LiteralOk(literal) abort
+  let l:line = getline(1)
+  let l:col = stridx(l:line, a:literal) + 1
+  if l:col <= 0
+    return 0
+  endif
+  for l:i in range(l:col, l:col + len(a:literal) - 1)
+    if !s:StringLike(1, l:i)
+      return 0
+    endif
+  endfor
+  let l:after = l:col + len(a:literal)
+  return l:after > len(l:line) || !s:StringLike(1, l:after)
+endfunction
+
+function! s:LastSwallowed() abort
+  let l:n = line('$')
+  let l:last = getline(l:n)
+  if empty(l:last)
+    return 0
+  endif
+  for l:c in range(1, len(l:last))
+    if !s:StringLike(l:n, l:c)
+      return 0
+    endif
+  endfor
+  return 1
+endfunction
+
+let s:cases = [
+      \ ['doc example',
+      \  ["SELECT r'\\n' /*Only the prev is raw!*/ '\\n' \"b\" \"\"\"c\"d\"e\"\"\" '''f'g'h''' \"1\" \"2\"", 'from t'],
+      \  ["r'\\n'", "'\\n'", "\"b\"", "\"\"\"c\"d\"e\"\"\"", "'''f'g'h'''", "\"1\""]],
+      \ ['raw regex',
+      \  ["SELECT r'f\\(abc,(.*),def\\)' AS x", 'from t'],
+      \  ["r'f\\(abc,(.*),def\\)'"]],
+      \ ['raw escaped quote',
+      \  ["select r'\\'' as x", 'from t'],
+      \  ["r'\\''"]],
+      \ ['raw double backslash',
+      \  ["select r'\\\\' as x", 'from t'],
+      \  ["r'\\\\'"]],
+      \ ['quoted escaped backslash',
+      \  ["select 'a\\\\' as x, \"b\\\\\" as y from t", 'from t'],
+      \  ["'a\\\\'", "\"b\\\\\""]],
+      \ ['prefix variants',
+      \  ["select rb'a' as a, rB'b' as b, br'c' as c, RB'''d''' as d, R\"e\" as e, B'f' as f from t", 'from t'],
+      \  ["rb'a'", "rB'b'", "br'c'", "RB'''d'''", "R\"e\"", "B'f'"]],
+      \ ]
+for s:case in s:cases
+  call s:Reload(s:case[1])
+  for s:lit in s:case[2]
+    call s:Check(s:LiteralOk(s:lit), s:case[0] . ': ' . s:lit)
+  endfor
+  call s:Check(!s:LastSwallowed(), s:case[0] . ': does not run away')
+endfor
+
+call s:Reload(["select r'''", '  \s+', "''', '') as y", 'from t'])
+call s:Check(synIDattr(synID(2, 1, 1), 'name') ==# 'sqlString', 'triple-quoted single raw: line 2 is a string')
+call s:Check(synIDattr(synID(3, 1, 1), 'name') ==# 'Quote', 'triple-quoted single raw: closes on line 3')
+
+call s:Reload(["select 'unterminated", 'from t'])
+call s:Check(!s:LastSwallowed(), 'unterminated quoted string: next line not swallowed')
 
 if s:failures > 0
   echomsg s:failures . ' check(s) failed'
