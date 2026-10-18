@@ -48,10 +48,26 @@ syn keyword sqlKeyword	recursive system_time for_system_time
 syn keyword sqlKeyword	deterministic returns language js external remote
 syn keyword sqlKeyword	connection location
 
+" Scripting keywords (BEGIN...END blocks, loops, exception handlers)
+syn keyword sqlKeyword	while loop repeat until leave iterate elseif exception
+
 " Operators
 syn keyword sqlOperator	not and or on in any some all between exists
 syn keyword sqlOperator	like escape unnest union intersect except distinct
 syn keyword sqlOperator	interval is
+
+" Symbolic operators, including BigQuery's || (concatenation), |> (pipe) and
+" => (named arguments). Multi-character operators are defined after their
+" single-character prefixes so they win at a shared start position; comments
+" (defined later still) beat / and - where /* and -- begin.
+syn match sqlOperator	"[&|^~]"
+syn match sqlOperator	"[+\-*/]"
+syn match sqlOperator	"<\|>\|="
+syn match sqlOperator	"||"
+syn match sqlOperator	"|>"
+syn match sqlOperator	"=>"
+syn match sqlOperator	"<<\|>>"
+syn match sqlOperator	"<=\|>=\|!=\|<>"
 
 " Data types (https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types)
 syn keyword sqlType	int64 int smallint integer bigint tinyint byteint
@@ -68,7 +84,8 @@ syn keyword sqlType	dayofyear week isoweek month quarter year isoyear
 " every variant, raw included: a raw string keeps the backslash in its value
 " but still can't end on an odd number of backslashes. Triple-quoted variants
 " are defined after their single-quoted counterparts because, at a shared
-" start position, the item defined last wins.
+" start position, the item defined last wins. Quoted identifiers use the same
+" escape sequences as string literals, so the backtick region shares the skip.
 syn region sqlString	matchgroup=Quote start=+[bB]\?"+	skip=+\\.+	end=+"+	oneline
 syn region sqlString	matchgroup=Quote start=+\%([rR][bB]\?\|[bB][rR]\)"+	skip=+\\.+	end=+"+	oneline
 syn region sqlString	matchgroup=Quote start=+[bB]\?"""+	skip=+\\.+	end=+"""+
@@ -77,10 +94,19 @@ syn region sqlString	matchgroup=Quote start=+[bB]\?'+	skip=+\\.+	end=+'+	oneline
 syn region sqlString	matchgroup=Quote start=+\%([rR][bB]\?\|[bB][rR]\)'+	skip=+\\.+	end=+'+	oneline
 syn region sqlString	matchgroup=Quote start=+[bB]\?'''+	skip=+\\.+	end=+'''+
 syn region sqlString	matchgroup=Quote start=+\%([rR][bB]\?\|[bB][rR]\)'''+	skip=+\\.+	end=+'''+
-syn region sqlString	matchgroup=Quote start=+`+	end=+`+	oneline
+syn region sqlString	matchgroup=Quote start=+`+	skip=+\\.+	end=+`+	oneline
 
-" Numbers
-syn match sqlNumber	"-\=\<\d*\.\=[0-9_]\>"
+" Numbers. Integer literals are decimal digits or 0x/0X hex, optionally signed.
+" Float literals (lexical reference) are [+-]DIGITS.[DIGITS][e[+-]DIGITS],
+" [+-][DIGITS].DIGITS[e[+-]DIGITS], or DIGITSe[+-]DIGITS. A trailing
+" negative lookahead keeps a number from matching inside an identifier.
+syn match sqlNumber	"[+-]\=\<0[xX][0-9A-Fa-f]\+\%(\w\)\@!"
+syn match sqlNumber	"[+-]\=\<\%(\d\+\.\d*\|\d\+\)\%([eE][+-]\=\d\+\)\=\%(\w\)\@!"
+syn match sqlNumber	"\%(\w\)\@<![+-]\=\.\d\+\%([eE][+-]\=\d\+\)\=\%(\w\)\@!"
+
+" Query parameters: @named and @@system variables, plus ? positional.
+syn match sqlParameter	"@@\?\h\w*"
+syn match sqlParameter	"?\%(\w\)\@!"
 
 " Comments (-- ... and /* ... */)
 syn region sqlComment	start="/\*" end="\*/" contains=sqlTodo,@Spell fold
@@ -217,6 +243,7 @@ hi def link sqlFunction		Function
 hi def link sqlKeyword		sqlSpecial
 hi def link sqlNumber		Number
 hi def link sqlOperator		sqlStatement
+hi def link sqlParameter	Identifier
 hi def link sqlSpecial		Special
 hi def link sqlStatement	Statement
 hi def link sqlString		String

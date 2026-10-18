@@ -29,8 +29,9 @@ vim.pack.add({
 ```
 
 Groups used: `sqlStatement sqlKeyword sqlOperator sqlType sqlFunction
-sqlString sqlNumber sqlComment` — same names as stock `sql.vim` so
-overlays and tests keep working.
+sqlString sqlNumber sqlComment sqlSpecial` — same names as stock `sql.vim` so
+overlays and tests keep working. `sqlParameter` is an extra group covering
+`@named`, `@@system` and `?` query parameters.
 
 ## Test
 

@@ -12,7 +12,7 @@ function! s:Check(cond, message) abort
   endif
 endfunction
 
-for s:group in ['sqlKeyword', 'sqlStatement', 'sqlType', 'sqlFunction', 'sqlString', 'sqlNumber', 'sqlComment']
+for s:group in ['sqlKeyword', 'sqlStatement', 'sqlType', 'sqlFunction', 'sqlString', 'sqlNumber', 'sqlComment', 'sqlOperator', 'sqlParameter']
   call s:Check(hlexists(s:group), 'highlight group ' . s:group . ' exists')
 endfor
 
@@ -128,6 +128,38 @@ call s:Check(synIDattr(synID(3, 1, 1), 'name') ==# 'Quote', 'triple-quoted singl
 
 call s:Reload(["select 'unterminated", 'from t'])
 call s:Check(!s:LastSwallowed(), 'unterminated quoted string: next line not swallowed')
+
+" Quoted identifiers share the string-literal escape rules.
+call s:Reload(['select `a\`b` as x from t', 'from t'])
+call s:Check(s:LiteralOk('`a\`b`'), 'quoted identifier: escaped backtick stays one literal')
+
+" Numeric literals: integers are decimal or 0x hex; float forms per the
+" lexical reference. Each must highlight wholly as sqlNumber.
+call s:Reload(['select 0xABC as x'])
+call s:Check(synIDattr(synID(1, 8, 1), 'name') ==# 'sqlNumber', 'hex integer: 0xABC')
+call s:Reload(['select .1E4, 58., 4e2, 123.456e-67 from t'])
+call s:Check(synIDattr(synID(1, 8, 1), 'name') ==# 'sqlNumber', 'float: .1E4')
+call s:Check(synIDattr(synID(1, 14, 1), 'name') ==# 'sqlNumber', 'float: 58.')
+call s:Check(synIDattr(synID(1, 19, 1), 'name') ==# 'sqlNumber', 'float: 4e2')
+call s:Check(synIDattr(synID(1, 24, 1), 'name') ==# 'sqlNumber', 'float: 123.456e-67')
+
+" Operators and parameters specific to BigQuery.
+call s:Reload(["select 'a' || 'b', fn(y => 1) from t"])
+call s:HasAt(1, '||', 'sqlOperator')
+call s:HasAt(1, '=>', 'sqlOperator')
+call s:Reload(['select a & b, a | b, a ^ b, ~a, a << 1, a >> 1 from t'])
+call s:HasAt(1, '&', 'sqlOperator')
+call s:HasAt(1, '|', 'sqlOperator')
+call s:HasAt(1, '^', 'sqlOperator')
+call s:HasAt(1, '~', 'sqlOperator')
+call s:HasAt(1, '<<', 'sqlOperator')
+call s:HasAt(1, '>>', 'sqlOperator')
+call s:Reload(['select a', '|> select b'])
+call s:HasAt(2, '|>', 'sqlOperator')
+call s:Reload(['select @named, ?, @@sysvar from t'])
+call s:HasAt(1, '@named', 'sqlParameter')
+call s:HasAt(1, '@@sysvar', 'sqlParameter')
+call s:HasAt(1, '?', 'sqlParameter')
 
 if s:failures > 0
   echomsg s:failures . ' check(s) failed'

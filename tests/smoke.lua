@@ -10,7 +10,7 @@ local function check(cond, message)
     print("PASS " .. message)
 end
 
-for _, group in ipairs({ "sqlKeyword", "sqlStatement", "sqlType", "sqlFunction", "sqlString", "sqlNumber", "sqlComment" }) do
+for _, group in ipairs({ "sqlKeyword", "sqlStatement", "sqlType", "sqlFunction", "sqlString", "sqlNumber", "sqlComment", "sqlOperator", "sqlParameter" }) do
     check(vim.fn.hlexists(group) == 1, "highlight group " .. group .. " exists")
 end
 
@@ -127,5 +127,38 @@ check(group_at(3, 1) == "Quote", "triple-quoted single raw: closes on line 3")
 reload({ [[select 'unterminated]], "from t" })
 check(not last_line_swallowed({ [[select 'unterminated]], "from t" }),
     "unterminated quoted string: next line not swallowed")
+
+-- Quoted identifiers share the string-literal escape rules, so a backslash
+-- before the closing backtick doesn't end the identifier.
+reload({ [[select `a\`b` as x from t]], "from t" })
+check(literal_ok(1, [[`a\`b`]]), "quoted identifier: escaped backtick stays one literal")
+
+-- Numeric literals: integers are decimal or 0x hex; float forms per the
+-- lexical reference. Each must highlight wholly as sqlNumber.
+reload({ "select 0xABC as x" })
+check(group_at(1, 8) == "sqlNumber", "hex integer: 0xABC")
+reload({ "select .1E4, 58., 4e2, 123.456e-67 from t" })
+check(group_at(1, 8) == "sqlNumber", "float: .1E4")
+check(group_at(1, 14) == "sqlNumber", "float: 58.")
+check(group_at(1, 19) == "sqlNumber", "float: 4e2")
+check(group_at(1, 24) == "sqlNumber", "float: 123.456e-67")
+
+-- Operators and parameters specific to BigQuery.
+reload({ "select 'a' || 'b', fn(y => 1) from t" })
+has_at(1, "||", "sqlOperator")
+has_at(1, "=>", "sqlOperator")
+reload({ "select a & b, a | b, a ^ b, ~a, a << 1, a >> 1 from t" })
+has_at(1, "&", "sqlOperator")
+has_at(1, "|", "sqlOperator")
+has_at(1, "^", "sqlOperator")
+has_at(1, "~", "sqlOperator")
+has_at(1, "<<", "sqlOperator")
+has_at(1, ">>", "sqlOperator")
+reload({ "select a", "|> select b" })
+has_at(2, "|>", "sqlOperator")
+reload({ "select @named, ?, @@sysvar from t" })
+has_at(1, "@named", "sqlParameter")
+has_at(1, "@@sysvar", "sqlParameter")
+has_at(1, "?", "sqlParameter")
 
 print("smoke OK")
